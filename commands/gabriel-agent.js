@@ -3,6 +3,7 @@ const config = require('../config');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { ensureEnglish } = require('../lib/translateHelper');
 
 // ── Conversation memory (per JID, keeps last 8 exchanges) ────────────────────
 const conversationMemory = new Map();
@@ -23,7 +24,7 @@ function buildContextPrompt(jid, currentQuery) {
     const mem = getMemory(jid).slice(-6); // last 6 turns
     if (!mem.length) return currentQuery;
     const history = mem.map(m => `${m.role === 'user' ? 'User' : 'Gabriel'}: ${m.text}`).join('\n');
-    return `You are Gabriel, a smart, friendly WhatsApp AI assistant. Stay in character. Be concise and helpful.\n\nConversation so far:\n${history}\n\nUser: ${currentQuery}\nGabriel:`;
+    return `You are Gabriel, a smart, friendly WhatsApp AI assistant. Stay in character. Always respond strictly in English only. Be concise and helpful.\n\nConversation so far:\n${history}\n\nUser: ${currentQuery}\nGabriel:`;
 }
 const os = require('os');
 
@@ -1725,7 +1726,7 @@ module.exports = {
                     `• If the user wants crypto     → reply: TOOL:crypto|<coin>\n` +
                     `• For any other bot command in the list above, reply: TOOL:<command>|<args>\n` +
                     `• For general questions, conversation, or topics NOT matching a command → answer naturally.\n\n` +
-                    `Format rules: Use *bold* for key info. Max 200 words. Never say you cannot run commands.`;
+                    `Format rules: Always respond strictly in English only. Use *bold* for key info. Max 200 words. Never say you cannot run commands.`;
 
                 let aiReply = await askFreeAI(query, jid, systemPrompt);
 
@@ -1743,7 +1744,7 @@ module.exports = {
                             const mem = getMemory(jid).slice(-6);
                             const geminiHistory = [
                                 { role: 'user',  parts: [{ text: systemPrompt }] },
-                                { role: 'model', parts: [{ text: `Got it! I'm Gabriel, ready to help. 🤖` }] },
+                                { role: 'model', parts: [{ text: `Got it! I'm Gabriel, ready to help in English. 🤖` }] },
                                 ...mem.slice(0, -1).map(m => ({
                                     role: m.role === 'user' ? 'user' : 'model',
                                     parts: [{ text: m.text }],
@@ -1788,7 +1789,10 @@ module.exports = {
                     // TOOL: command not found — fall through to conversational reply
                 }
 
-                // Conversational response (may come from ch.at, Gemini, or offline fallback)
+                // Conversational response — ensure it is strictly in English
+                if (aiReply) {
+                    aiReply = await ensureEnglish(aiReply);
+                }
                 response = aiReply.startsWith('🤖 *Gabriel*') ? aiReply : `🤖 *Gabriel*\n\n${aiReply}`;
                 rememberMessage(jid, 'bot', aiReply.slice(0, 300));
             }
