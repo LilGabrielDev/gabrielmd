@@ -4,7 +4,7 @@
 
 <br>
 
-<img src="https://github.com/LilGabrielDev/Gabrielbot-MD/blob/main/assets/bot_image.jpg?raw=true" width="250" style="max-width: 100%; height: auto; border-radius: 50%;"/>
+<img src="https://github.com/LilGabrielDev/gabrielmd/blob/main/assets/bot_image.jpg?raw=true" width="250" style="max-width: 100%; height: auto; border-radius: 50%;"/>
 
 <br><br>
 
@@ -13,10 +13,10 @@
 <br>
 
 <p>
-<a href="https://github.com/LilGabrielDev/GabrielBot-MD/stargazers"><img src="https://img.shields.io/github/stars/LilGabrielDev/GabrielBot-MD?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117&color=33ff00" /></a>
-<a href="https://github.com/LilGabrielDev/GabrielBot-MD/network/members"><img src="https://img.shields.io/github/forks/LilGabrieltoDev/GabrielBot-MD?style=for-the-badge&logo=git&logoColor=white&labelColor=0d1117&color=00d4aa" /></a>
-<a href="https://github.com/LilGabrielDev/GabrielBot-MD/commits"><img src="https://img.shields.io/github/last-commit/LilGabrielDev/GabrielBot-MD?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117&color=3b82f6" /></a>
-<a href="LICENSE"><img src="https://img.shields.io/github/license/LilGabrielDev/GabrielBot-MD?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=0d1117&color=dc3545" /></a>
+<a href="https://github.com/LilGabrielDev/gabrielmd/stargazers"><img src="https://img.shields.io/github/stars/LilGabrielDev/gabrielmd?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117&color=33ff00" /></a>
+<a href="https://github.com/LilGabrielDev/gabrielmd/network/members"><img src="https://img.shields.io/github/forks/LilGabrielDev/gabrielmd?style=for-the-badge&logo=git&logoColor=white&labelColor=0d1117&color=00d4aa" /></a>
+<a href="https://github.com/LilGabrielDev/gabrielmd/commits"><img src="https://img.shields.io/github/last-commit/LilGabrielDev/gabrielmd?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117&color=3b82f6" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/github/license/LilGabrielDev/gabrielmd?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=0d1117&color=dc3545" /></a>
 </p>
 
 <br>
@@ -72,7 +72,7 @@
 
 | Platform | Badge | Status |
 |:--------:|:-----:|:------|
-| **GitHub Fork** | [![Fork Repo](https://img.shields.io/badge/Fork-Repository-33ff00?style=for-the-badge&logo=github)](https://github.com/LilGabrielDev/GabrielBot-MD/fork) | ⭐ Required first |
+| **GitHub Fork** | [![Fork Repo](https://img.shields.io/badge/Fork-Repository-33ff00?style=for-the-badge&logo=github)](https://github.com/LilGabrielDev/gabrielmd/fork) | ⭐ Required first |
 | **Panel** | [![Deploy on Panel](https://img.shields.io/badge/Deploy%20Now-Bot%20Hosting-28a745?style=for-the-badge&logo=server)](https://bot-hosting.net/?aff=1068419752923508776) | Recommended for 24/7 |
 | **VPS** | [![Deploy on VPS](https://img.shields.io/badge/Deploy%20Now-Petrosky%20VPS-0078E7?style=for-the-badge&logo=icloud)](https://client.petrosky.io/aff.php?aff=394) | Full Control |
 | **Katabump** | [![Deploy on Katabump](https://img.shields.io/badge/Deploy%20Now-Katabump-D6B7D6?style=for-the-badge&logo=server&logoColor=black)](https://dashboard.katabump.com/auth/login#d6b7d6) | Alternative Panel |
@@ -90,8 +90,8 @@
 
 ```bash
 # Clone & Install
-git clone https://github.com/LilGabrielDev/GabrielBot-MD.git
-cd GabrielBot-MD
+git clone https://github.com/LilGabrielDev/gabrielmd.git
+cd gabrielmd
 npm install
 
 # Start

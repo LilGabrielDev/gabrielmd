@@ -12,7 +12,7 @@ const settings = {
   description: "A feature-rich multi-device WhatsApp bot with 400+ commands, AI agent, smart features, and anti-ban protection. Built with Node.js and Baileys",
   version: "1.0.1",
   updateZipUrl:
-    "https://github.com/LilGabrielDev/Gabrielbot-MD/archive/refs/heads/main.zip",
+    "https://github.com/LilGabrielDev/gabrielmd/archive/refs/heads/main.zip",
 };
 
 module.exports = settings;

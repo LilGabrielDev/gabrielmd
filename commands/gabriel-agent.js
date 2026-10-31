@@ -45,7 +45,7 @@ const BOT_IDENTITY = {
     version: '4.0.1',
     language: 'Node.js',
     library: 'Baileys',
-    repo: 'https://github.com/LilGabrielDev/GabrielBot-MD',
+    repo: 'https://github.com/LilGabrielDev/gabrielmd',
     get platform() { return detectPlatform(); },
     developer: 'GabrielDev',
     ownerName: config.OWNER_NAME || 'Gabriel MD',

@@ -33,6 +33,11 @@
   ],
   "author": "LilGabriel",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LilGabrielDev/gabrielmd.git"
+  },
+  "homepage": "https://github.com/LilGabrielDev/gabrielmd",
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
     "@ffmpeg/ffmpeg": "^0.12.15",
