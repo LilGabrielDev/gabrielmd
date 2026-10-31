@@ -5,7 +5,7 @@ const settings = {
   botOwner: "Lil Gabriel", // Your name
   ownerNumber: "254716427334", //Set your number here without + symbol, just add country code & number without any space
   giphyApiKey: "qnl7ssQChTdPjsKta2Ax2LMaGXz303tq",
-  prefix: ".", //set your prefred prefix
+  prefix: [".", "!"], // supported prefixes
   commandMode: "public",
   maxStoreMessages: 20,
   storeWriteInterval: 10000,

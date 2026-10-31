@@ -680,8 +680,13 @@ async function handleMessages(sock, messageUpdate, printLog) {
       case normalizedMessage === ".help" ||
         normalizedMessage === ".menu" ||
         normalizedMessage === ".bot" ||
-        normalizedMessage === ".list":
-        await helpCommand(sock, chatId, message);
+        normalizedMessage === ".list" ||
+        normalizedMessage === ".features" ||
+        normalizedMessage === ".commands" ||
+        normalizedMessage.startsWith(".help ") ||
+        normalizedMessage.startsWith(".menu ") ||
+        normalizedMessage.startsWith(".features "):
+        await helpCommand(sock, chatId, message, args);
         commandExecuted = true;
         break;
       case normalizedMessage === ".sticker" || normalizedMessage === ".s":
