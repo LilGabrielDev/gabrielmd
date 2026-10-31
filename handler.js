@@ -24,11 +24,29 @@ function walkPluginFiles(dir) {
 }
 
 function normalizePluginModule(mod, filePath, fileName) {
+  const baseName = path.basename(fileName, '.js').toLowerCase();
+
+  // If mod is a function, wrap it so it works cleanly whether expecting
+  // (sock, chatId, message, q, args, ctx) OR (sock, message, args, ctx)
   if (typeof mod === 'function') {
-    const baseName = path.basename(fileName, '.js').toLowerCase();
+    const runWrapper = async (sock, message, args, ctx) => {
+      if (message && typeof message === 'object' && (message.key || message.message)) {
+        const chatId = ctx?.chatId || ctx?.jid || message.key?.remoteJid;
+        const q = Array.isArray(args) ? args.join(' ') : (typeof args === 'string' ? args : '');
+        return await mod(sock, chatId, message, q, args, ctx);
+      }
+      return await mod(sock, message, args, ctx);
+    };
+
     return {
-      commands: [baseName, ...(baseName === 'help' ? ['menu'] : []), ...(baseName === 'delete' ? ['del'] : [])],
-      run: mod,
+      commands: [
+        baseName,
+        ...(baseName === 'help' ? ['menu', 'helpmenu'] : []),
+        ...(baseName === 'delete' ? ['del'] : []),
+        ...(baseName === 'sticker' ? ['s', 'stick'] : []),
+        ...(baseName === 'sticker-alt' ? ['sticker2', 'salt'] : []),
+      ],
+      run: runWrapper,
       _sourceFile: fileName,
       _sourcePath: filePath,
     };
@@ -39,20 +57,50 @@ function normalizePluginModule(mod, filePath, fileName) {
       return normalizePluginModule(mod.default, filePath, fileName);
     }
 
-    if (Array.isArray(mod.commands) && (typeof mod.run === 'function' || typeof mod.exec === 'function')) {
-      return { ...mod, run: mod.run || mod.exec, _sourceFile: fileName, _sourcePath: filePath };
+    let runFn = mod.run || mod.exec;
+
+    // If not direct run/exec, check for named function like xxxCommand, handleXxxCommand, etc.
+    if (!runFn) {
+      for (const key of Object.keys(mod)) {
+        if (typeof mod[key] === 'function' && (
+          key.toLowerCase().includes(baseName) ||
+          key.toLowerCase().endsWith('command') ||
+          key.toLowerCase().startsWith('handle')
+        )) {
+          runFn = mod[key];
+          break;
+        }
+      }
     }
 
-    if (typeof mod.run === 'function' || typeof mod.exec === 'function') {
-      const baseName = path.basename(fileName, '.js').toLowerCase();
-      const commands = Array.isArray(mod.commands)
-        ? mod.commands.filter(Boolean)
-        : typeof mod.commands === 'string' && mod.commands
-          ? [mod.commands]
-          : [baseName];
+    if (typeof runFn === 'function') {
+      let commands = [];
+      if (Array.isArray(mod.commands)) {
+        commands = mod.commands.filter(Boolean);
+      } else if (typeof mod.commands === 'string' && mod.commands) {
+        commands = [mod.commands];
+      }
+      if (!commands.length) {
+        commands = [baseName];
+      }
+      if (Array.isArray(mod.alias)) commands.push(...mod.alias);
+      if (Array.isArray(mod.aliases)) commands.push(...mod.aliases);
+      if (typeof mod.alias === 'string') commands.push(mod.alias);
+
+      const runWrapper = async (sock, message, args, ctx) => {
+        // If runFn has legacy signature (sock, chatId, message, q, args)
+        if (runFn.length >= 3 && runFn.length <= 5 && !mod.commands) {
+          const chatId = ctx?.chatId || ctx?.jid || message?.key?.remoteJid;
+          const q = Array.isArray(args) ? args.join(' ') : (typeof args === 'string' ? args : '');
+          return await runFn(sock, chatId, message, q, args, ctx);
+        }
+        return await runFn(sock, message, args, ctx);
+      };
+
       return {
-        commands,
-        run: mod.run || mod.exec,
+        ...mod,
+        commands: [...new Set(commands.map(c => String(c).toLowerCase().trim()))],
+        run: runWrapper,
         _sourceFile: fileName,
         _sourcePath: filePath,
       };
@@ -132,5 +180,6 @@ module.exports = {
   getPlugin,
   getAllPlugins,
   getPluginCount,
+  normalizePluginModule,
   resetCache,
 };

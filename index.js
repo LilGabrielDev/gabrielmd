@@ -1,9 +1,19 @@
 require("./settings");
-const { Boom } = require("@hapi/boom");
 const fs = require("fs");
+const path = require("path");
+
+// 🧹 Fix for ENOSPC / temp overflow in hosted panels (Katabump, Bot-Hosting, Pterodactyl)
+const customTemp = path.join(process.cwd(), "temp");
+const customTmp = path.join(process.cwd(), "tmp");
+if (!fs.existsSync(customTemp)) fs.mkdirSync(customTemp, { recursive: true });
+if (!fs.existsSync(customTmp)) fs.mkdirSync(customTmp, { recursive: true });
+process.env.TMPDIR = customTemp;
+process.env.TEMP = customTemp;
+process.env.TMP = customTemp;
+
+const { Boom } = require("@hapi/boom");
 const chalk = require("chalk");
 const FileType = require("file-type");
-const path = require("path");
 const http = require("http");
 const axios = require("axios");
 const {
@@ -65,10 +75,10 @@ store.readFromFile();
 setInterval(() => store.writeToFile(), settings.storeWriteInterval || 10000);
 
 // Global configuration
-global.botname = settings.botName || "Gabriel MD Bot";
+global.botname = process.env.BOT_NAME || settings.botName || "Gabriel MD Bot";
 global.themeemoji = "•";
 
-let defaultPhoneNumber = settings.ownerNumber || "254716427334";
+let defaultPhoneNumber = process.env.OWNER_NUMBER || settings.ownerNumber || "254716427334";
 let owner = JSON.parse(fs.readFileSync("./data/owner.json"));
 
 // ── Shared Bot State for Web Dashboard & APIs ──────────────────────────
@@ -95,8 +105,8 @@ function addLog(msg) {
 let XeonBotIncInstance = null;
 let isReconnecting = false;
 
-// ─── Native HTTP Server on Port 3000 (Required for AI Studio) ──────────
-const PORT = process.env.PORT || 3000;
+// ─── Native HTTP Server on Port 3000 (Required for AI Studio & Panels) ──────────
+const PORT = process.env.PORT || process.env.SERVER_PORT || 3000;
 const HOST = "0.0.0.0";
 
 function renderDashboardHtml() {
@@ -600,10 +610,118 @@ const server = http.createServer((req, res) => {
   res.end("Not Found");
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(chalk.green(`🌐 Gabriel MD Web Dashboard active on http://${HOST}:${PORT}`));
-  addLog(`Web server active on port ${PORT}`);
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.warn(chalk.yellow(`⚠️ Port ${PORT} already in use. Web dashboard running in headless panel mode.`));
+    addLog(`Port ${PORT} in use; headless mode active`);
+  } else {
+    console.error(chalk.red("Server error:"), err.message);
+  }
 });
+
+try {
+  server.listen(PORT, HOST, () => {
+    console.log(chalk.green(`🌐 Gabriel MD Web Dashboard active on http://${HOST}:${PORT}`));
+    addLog(`Web server active on port ${PORT}`);
+  });
+} catch (e) {
+  console.warn("Panel server listen note:", e.message);
+}
+
+// ─── Restore Session from Environment Variable (Katabump / Panel Support) ───
+async function restoreSessionFromEnv(sessionDir) {
+  const credsPath = path.join(sessionDir, "creds.json");
+  if (fs.existsSync(credsPath)) {
+    try {
+      const stats = fs.statSync(credsPath);
+      if (stats.size > 20) {
+        addLog("Existing session found on disk.");
+        return true;
+      }
+    } catch {}
+  }
+
+  const rawSession = (process.env.SESSION_ID || "").trim();
+  if (!rawSession) return false;
+
+  console.log(chalk.cyan("📦 SESSION_ID found in environment. Restoring session for panel..."));
+  addLog("Restoring session from SESSION_ID...");
+
+  if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+
+  let sessionData = rawSession;
+
+  // 1. Strip common prefixes like Gabriel~, Silva~, Xeon~
+  if (sessionData.includes("~")) {
+    sessionData = sessionData.split("~").slice(1).join("~").trim();
+  } else if (sessionData.startsWith("Gabriel_") || sessionData.startsWith("gabriel_")) {
+    sessionData = sessionData.slice(8).trim();
+  }
+
+  // 2. Direct URL
+  if (sessionData.startsWith("http://") || sessionData.startsWith("https://")) {
+    try {
+      const res = await axios.get(sessionData, { timeout: 10000 });
+      let data = res.data;
+      if (typeof data === "object") data = JSON.stringify(data);
+      if (data && (data.includes("noiseKey") || data.includes("registrationId") || data.trim().startsWith("{"))) {
+        fs.writeFileSync(credsPath, data);
+        console.log(chalk.green("✅ creds.json restored from SESSION_ID URL!"));
+        addLog("creds.json restored from SESSION_ID URL");
+        return true;
+      }
+    } catch (err) {
+      console.error(chalk.yellow(`Could not fetch SESSION_ID from URL: ${err.message}`));
+    }
+  }
+
+  // 3. Base64 encoded creds.json
+  try {
+    const decoded = Buffer.from(sessionData, "base64").toString("utf-8");
+    if (decoded.includes("noiseKey") || decoded.includes("registrationId") || (decoded.trim().startsWith("{") && decoded.trim().endsWith("}"))) {
+      fs.writeFileSync(credsPath, decoded);
+      console.log(chalk.green("✅ creds.json restored from base64 SESSION_ID!"));
+      addLog("creds.json restored from base64 SESSION_ID");
+      return true;
+    }
+  } catch (err) {}
+
+  // 4. Raw JSON string
+  if (sessionData.trim().startsWith("{") && sessionData.trim().endsWith("}")) {
+    try {
+      JSON.parse(sessionData);
+      fs.writeFileSync(credsPath, sessionData);
+      console.log(chalk.green("✅ creds.json restored from raw JSON SESSION_ID!"));
+      addLog("creds.json restored from raw JSON SESSION_ID");
+      return true;
+    } catch (err) {}
+  }
+
+  // 5. Short Paste ID (Pastebin, Catbox, Rentry)
+  if (/^[a-zA-Z0-9_\-]+$/.test(sessionData)) {
+    const candidateUrls = [
+      `https://pastebin.com/raw/${sessionData}`,
+      `https://files.catbox.moe/${sessionData}`,
+      `https://rentry.co/${sessionData}/raw`,
+    ];
+    for (const url of candidateUrls) {
+      try {
+        const res = await axios.get(url, { timeout: 6000 });
+        let data = res.data;
+        if (typeof data === "object") data = JSON.stringify(data);
+        if (data && (data.includes("noiseKey") || data.includes("registrationId") || data.trim().startsWith("{"))) {
+          fs.writeFileSync(credsPath, data);
+          console.log(chalk.green(`✅ creds.json restored from remote paste: ${url}`));
+          addLog("creds.json restored from remote paste");
+          return true;
+        }
+      } catch (e) {}
+    }
+  }
+
+  console.log(chalk.yellow("⚠️ Could not restore SESSION_ID automatically. Proceeding with pairing."));
+  return false;
+}
 
 // ─── Memory optimization ───────────────────────────────────────────────
 setInterval(() => {
@@ -626,6 +744,9 @@ async function startXeonBotInc() {
 
     const sessionDir = path.join(__dirname, "session");
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+
+    // Restore creds.json from SESSION_ID if provided in panel environment
+    await restoreSessionFromEnv(sessionDir);
 
     let { version, isLatest } = await fetchLatestBaileysVersion();
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
@@ -676,10 +797,10 @@ async function startXeonBotInc() {
             botState.status = "pairing_ready";
             botState.statusText = `Pairing code ready: ${code}`;
             addLog(`Pairing code generated: ${code}`);
-            console.log(
-              chalk.black(chalk.bgGreen(`Your Pairing Code : `)),
-              chalk.black(chalk.white(code))
-            );
+            console.log(chalk.green.bold("\n┌──────────────────────────────────────────────┐"));
+            console.log(chalk.green.bold(`│      WHATSAPP PAIRING CODE : ${code}       │`));
+            console.log(chalk.green.bold("└──────────────────────────────────────────────┘"));
+            console.log(chalk.cyan(`Open WhatsApp > Linked Devices > Link with Phone Number and enter: ${code}\n`));
           } catch (err) {
             console.log(chalk.yellow(`Pairing code request note: ${err.message}`));
           }
@@ -784,6 +905,12 @@ async function startXeonBotInc() {
         addLog("QR Code generated for pairing");
         try {
           botState.qrDataUrl = await qrcode.toDataURL(qr, { scale: 6 });
+        } catch {}
+
+        try {
+          const qrcodeTerminal = require("qrcode-terminal");
+          console.log(chalk.cyan("\n📷 Scan WhatsApp QR Code below (or use Web Dashboard / Pairing Code):\n"));
+          qrcodeTerminal.generate(qr, { small: true });
         } catch {}
       }
 

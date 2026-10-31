@@ -1851,7 +1851,34 @@ async function handleMessages(sock, messageUpdate, printLog) {
               }
 
               const reply = (text, opts = {}) =>
-                sock.sendMessage(chatId, { text, ...opts }, { quoted: message });
+                sock.sendMessage(
+                  chatId,
+                  typeof text === "string" ? { text, ...opts } : { ...text, ...opts },
+                  { quoted: message }
+                );
+              const safeSend = (content, opts = {}) =>
+                sock.sendMessage(chatId, content, { quoted: message, ...opts }).catch(() => {});
+
+              const contextInfo = message.message?.extendedTextMessage?.contextInfo || {};
+              const mentionedJid = contextInfo.mentionedJid || [];
+              const participant = contextInfo.participant || message.key?.participant || senderId;
+
+              let groupMetadata = null;
+              if (isGroup) {
+                try {
+                  groupMetadata = await sock.groupMetadata(chatId);
+                } catch (e) {}
+              }
+
+              const theme = {
+                botName: settings.botName || "Gabriel MD Bot",
+                admin: "⛔ Only admins can use this command.",
+                botAdmin: "⛔ I need to be an admin to perform this action.",
+                owner: "⛔ This command is only available for the owner or sudo!",
+                group: "❌ This command can only be used in groups.",
+                private: "❌ This command can only be used in private chats."
+              };
+
               const ctx = {
                 jid: chatId,
                 chatId,
@@ -1865,9 +1892,17 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 usedPrefix,
                 prefix: usedPrefix,
                 args,
+                argsText,
+                query: argsText || args.join(" "),
+                text: userMessage,
                 command: commandName,
                 reply,
-                contextInfo: message.message?.extendedTextMessage?.contextInfo || {},
+                safeSend,
+                theme,
+                contextInfo,
+                mentionedJid,
+                participant,
+                groupMetadata,
               };
 
               await plugin.run(sock, message, args, ctx);
@@ -1875,6 +1910,13 @@ async function handleMessages(sock, messageUpdate, printLog) {
               pluginExecuted = true;
             } catch (pluginErr) {
               console.error(`❌ Error executing plugin ${commandName}:`, pluginErr);
+              await sock.sendMessage(
+                chatId,
+                { text: `❌ Error executing *${usedPrefix}${commandName}*: ${pluginErr.message || "Failed"}` },
+                { quoted: message }
+              ).catch(() => {});
+              commandExecuted = true;
+              pluginExecuted = true;
             }
           }
         }
