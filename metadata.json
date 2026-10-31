@@ -1,0 +1,6 @@
+{
+  "name": "Gabriel MD WhatsApp Bot",
+  "description": "Multi-device WhatsApp bot with anti-scam protection, group management, and smart automation.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
